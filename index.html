@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Piano Tiles Modern - Dark Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0b0f19;
+      --bg-panel: rgba(18, 24, 38, 0.85);
+      --lane-border: rgba(255, 255, 255, 0.08);
+      --lane-bg: rgba(15, 23, 42, 0.6);
+      --accent-cyan: #38bdf8;
+      --accent-purple: #818cf8;
+      --accent-pink: #f43f5e;
+      --accent-emerald: #10b981;
+      --tile-primary: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+      --tile-glow: rgba(59, 130, 246, 0.45);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      background-image: 
+        radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 20% 80%, rgba(244, 63, 94, 0.08) 0%, transparent 40%);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 16px;
+    }
+
+    /* Container Utama */
+    .game-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Header & Skor Real-Time */
+    .game-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 12px 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--text-main);
+      transition: transform 0.1s ease;
+    }
+
+    .stat-value.score {
+      color: var(--accent-cyan);
+      text-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+    }
+
+    .stat-value.high-score {
+      color: #fbbf24;
+      text-shadow: 0 0 16px rgba(251, 191, 36, 0.3);
+    }
+
+    /* Area Kanvas Terpusat */
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 580px;
+      border-radius: 20px;
+      overflow: hidden;
+      background: var(--lane-bg);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 
+        0 20px 40px -10px rgba(0, 0, 0, 0.7),
+        inset 0 0 40px rgba(0, 0, 0, 0.5);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Key Hint Bar di bawah canvas */
+    .controls-hint {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .key-btn {
+      background: var(--bg-panel);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 8px 4px;
+      text-align: center;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .key-btn:active, .key-btn.active {
+      transform: translateY(2px);
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+    }
+
+    .key-char {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: block;
+    }
+
+    .key-sub {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* Overlay Modal (Start & Game Over) */
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(11, 15, 25, 0.88);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      z-index: 10;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .overlay-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+    }
+
+    .overlay-title.gameover {
+      background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .overlay-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      max-width: 280px;
+      line-height: 1.4;
+    }
+
+    .score-summary {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 16px 24px;
+      margin-bottom: 24px;
+      width: 100%;
+      max-width: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .summary-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .summary-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .btn-action {
+      background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+      color: #ffffff;
+      border: none;
+      padding: 14px 36px;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.5);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-action:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 25px -4px rgba(37, 99, 235, 0.65);
+    }
+
+    .btn-action:active {
+      transform: translateY(1px);
+    }
+
+    .badge-new {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.15);
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-left: 6px;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-wrapper">
+    <!-- Header Statistik -->
+    <header class="game-header">
+      <div class="stat-box">
+        <span class="stat-label">Skor</span>
+        <span id="scoreDisplay" class="stat-value score">0</span>
+      </div>
+      <div class="stat-box" style="text-align: right;">
+        <span class="stat-label">High Score</span>
+        <span id="highScoreDisplay" class="stat-value high-score">0</span>
+      </div>
+    </header>
+
+    <!-- Canvas Game -->
+    <div class="canvas-container">
+      <canvas id="gameCanvas" width="400" height="580"></canvas>
+
+      <!-- Overlay Start -->
+      <div id="startOverlay" class="overlay">
+        <h1 class="overlay-title">PIANO TILES</h1>
+        <p class="overlay-subtitle">Tekan tuts yang sesuai dengan jalur sebelum menyentuh batas bawah!</p>
+        <button id="startBtn" class="btn-action">
+          <span>Mulai Bermain</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Overlay Game Over -->
+      <div id="gameOverOverlay" class="overlay hidden">
+        <h2 class="overlay-title gameover">GAME OVER</h2>
+        <p class="overlay-subtitle" id="gameOverReason">Tile terlewat atau salah menekan tuts!</p>
+
+        <div class="score-summary">
+          <div class="summary-row">
+            <span class="summary-label">Skor Akhir</span>
+            <span id="finalScore" class="summary-val" style="color: var(--accent-cyan);">0</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Skor Tertinggi</span>
+            <span id="finalHighScore" class="summary-val" style="color: #fbbf24;">0</span>
+          </div>
+        </div>
+
+        <button id="restartBtn" class="btn-action">
+          <span>Main Lagi</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tombol Kontrol Petunjuk -->
+    <div class="controls-hint">
+      <div class="key-btn" data-lane="0">
+        <span class="key-char">A</span>
+        <span class="key-sub">← Kiri</span>
+      </div>
+      <div class="key-btn" data-lane="1">
+        <span class="key-char">S</span>
+        <span class="key-sub">↓ Bawah</span>
+      </div>
+      <div class="key-btn" data-lane="2">
+        <span class="key-char">W</span>
+        <span class="key-sub">↑ Atas</span>
+      </div>
+      <div class="key-btn" data-lane="3">
+        <span class="key-char">D</span>
+        <span class="key-sub">→ Kanan</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- SYNTHESIZER AUDIO (Web Audio API Tanpa File Eksternal) ---
+    class PianoAudio {
+      constructor() {
+        this.ctx = null;
+        // Melodi tangga nada harmonis (Frekuensi Hz: C4, D4, E4, F4, G4, A4, B4, C5, dsb)
+        this.notes = [
+          261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25,
+          587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50
+        ];
+        this.melodyIndex = 0;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContextClass();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTileSound() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        // Siklus nada melodi piano yang menyenangkan
+        const freq = this.notes[this.melodyIndex % this.notes.length];
+        this.melodyIndex++;
+
+        osc.type = 'triangle'; // Suara hangat mirip piano
+        osc.frequency.setValueAtTime(freq, now);
+
+        // Karakteristik ADSR nada piano akustik
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.35, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.5);
+      }
+
+      playMissSound() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.35);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+    }
+
+    // --- LOGIKA GAME PIANO TILES ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const highScoreDisplay = document.getElementById('highScoreDisplay');
+    const startOverlay = document.getElementById('startOverlay');
+    const gameOverOverlay = document.getElementById('gameOverOverlay');
+    const finalScore = document.getElementById('finalScore');
+    const finalHighScore = document.getElementById('finalHighScore');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const keyButtons = document.querySelectorAll('.key-btn');
+
+    const LANES_COUNT = 4;
+    const LANE_WIDTH = canvas.width / LANES_COUNT;
+    const TILE_HEIGHT = 135;
+    const HIT_LINE_Y = canvas.height - 75; // Garis batas trigger di bawah
+
+    const sound = new PianoAudio();
+
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('piano_tiles_high_score') || '0', 10);
+    highScoreDisplay.textContent = highScore;
+
+    let isPlaying = false;
+    let tiles = [];
+    let particles = [];
+    let keyPressFx = [0, 0, 0, 0]; // Efek cahaya saat tuts ditekan
+    let speed = 4.2;
+    let baseSpeed = 4.2;
+    let animationFrameId = null;
+    let lastTime = 0;
+
+    // Mapping tombol keyboard: WASD dan Tombol Panah (Arrow Keys)
+    const KEY_TO_LANE = {
+      // Jalur 0: 'A' atau ArrowLeft
+      'KeyA': 0, 'a': 0, 'A': 0, 'ArrowLeft': 0,
+      // Jalur 1: 'S' atau ArrowDown
+      'KeyS': 1, 's': 1, 'S': 1, 'ArrowDown': 1,
+      // Jalur 2: 'W' atau ArrowUp
+      'KeyW': 2, 'w': 2, 'W': 2, 'ArrowUp': 2,
+      // Jalur 3: 'D' atau ArrowRight
+      'KeyD': 3, 'd': 3, 'D': 3, 'ArrowRight': 3
+    };
+
+    class Tile {
+      constructor(lane, y) {
+        this.lane = lane;
+        this.y = y;
+        this.width = LANE_WIDTH;
+        this.height = TILE_HEIGHT;
+        this.hit = false;
+        this.color = '#38bdf8';
+      }
+
+      draw() {
+        const x = this.lane * LANE_WIDTH;
+        const padding = 3;
+
+        ctx.save();
+        if (this.hit) {
+          // Efek tile sudah ditekan
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+          ctx.fillRect(x + padding, this.y, this.width - padding * 2, this.height);
+        } else {
+          // Tile hitam mengkilap bergaya modern
+          const grad = ctx.createLinearGradient(x, this.y, x, this.y + this.height);
+          grad.addColorStop(0, '#1e293b');
+          grad.addColorStop(0.5, '#0f172a');
+          grad.addColorStop(1, '#020617');
+
+          ctx.fillStyle = grad;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetY = 4;
+
+          // Rounded rectangle tile
+          const r = 8;
+          ctx.beginPath();
+          ctx.roundRect(x + padding, this.y, this.width - padding * 2, this.height - 4, r);
+          ctx.fill();
+
+          // Bar aksen neon di tepi atas tile
+          ctx.fillStyle = '#38bdf8';
+          ctx.shadowColor = 'rgba(56, 189, 248, 0.8)';
+          ctx.shadowBlur = 8;
+          ctx.fillRect(x + padding + 4, this.y + 3, this.width - padding * 2 - 8, 3);
+        }
+        ctx.restore();
+      }
+    }
+
+    class Particle {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.vx = (Math.random() - 0.5) * 6;
+        this.vy = (Math.random() - 0.8) * 6;
+        this.alpha = 1;
+        this.size = Math.random() * 4 + 2;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= 0.035;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // Inisialisasi susunan awal tile
+    function createInitialTiles() {
+      tiles = [];
+      let currentY = HIT_LINE_Y - TILE_HEIGHT;
+      // Spawn 5 tile ke atas secara bertahap
+      for (let i = 0; i < 5; i++) {
+        const lane = Math.floor(Math.random() * LANES_COUNT);
+        tiles.push(new Tile(lane, currentY));
+        currentY -= TILE_HEIGHT;
+      }
+    }
+
+    // Memunculkan tile baru di posisi paling atas
+    function spawnTile() {
+      let topY = 0;
+      if (tiles.length > 0) {
+        topY = Math.min(...tiles.map(t => t.y));
+      }
+      const newY = topY - TILE_HEIGHT;
+      const lastLane = tiles.length > 0 ? tiles[tiles.length - 1].lane : -1;
+      
+      let lane;
+      do {
+        lane = Math.floor(Math.random() * LANES_COUNT);
+      } while (lane === lastLane && Math.random() < 0.4); // Hindari pengulangan jalur berlebihan
+
+      tiles.push(new Tile(lane, newY));
+    }
+
+    function createHitParticles(lane, y) {
+      const startX = lane * LANE_WIDTH + LANE_WIDTH / 2;
+      for (let i = 0; i < 18; i++) {
+        particles.push(new Particle(startX, y, i % 2 === 0 ? '#38bdf8' : '#818cf8'));
+      }
+    }
+
+    // Fungsi Update Skor
+    function addScore() {
+      score++;
+      scoreDisplay.textContent = score;
+
+      // Efek sedikit membesar pada teks skor
+      scoreDisplay.style.transform = 'scale(1.25)';
+      setTimeout(() => {
+        scoreDisplay.style.transform = 'scale(1)';
+      }, 100);
+
+      // Cek Rekor High Score secara real-time
+      if (score > highScore) {
+        highScore = score;
+        highScoreDisplay.textContent = highScore;
+        localStorage.setItem('piano_tiles_high_score', highScore.toString());
+      }
+
+      // Tingkatkan kecepatan secara dinamis seiring skor
+      speed = baseSpeed + Math.min(score * 0.12, 10.0);
+    }
+
+    // Eksekusi Input Player (Tombol / Klik)
+    function handleLaneInput(laneIndex) {
+      if (!isPlaying) return;
+
+      sound.init();
+
+      // Trigger visual efek tuts ditekan
+      keyPressFx[laneIndex] = 1.0;
+      highlightButton(laneIndex);
+
+      // Temukan tile aktif terendah yang belum di-hit
+      const unhitTiles = tiles.filter(t => !t.hit);
+      if (unhitTiles.length === 0) return;
+
+      // Cari tile yang posisinya paling bawah di layar
+      let targetTile = null;
+      let maxY = -Infinity;
+      for (const t of unhitTiles) {
+        if (t.y > maxY) {
+          maxY = t.y;
+          targetTile = t;
+        }
+      }
+
+      if (!targetTile) return;
+
+      // Jika pemain menekan jalur yang tepat dari tile terbawah
+      if (targetTile.lane === laneIndex) {
+        // Toleransi posisi tile bisa ditekan (dari sedikit di atas layar hingga batas bawah)
+        if (targetTile.y + targetTile.height >= 0) {
+          targetTile.hit = true;
+          sound.playTileSound();
+          createHitParticles(laneIndex, Math.min(targetTile.y + targetTile.height, HIT_LINE_Y));
+          addScore();
+          return;
+        }
+      }
+
+      // Jika menekan jalur yang salah padahal ada tile yang wajib ditekan
+      triggerGameOver("Salah menekan tombol tuts!");
+    }
+
+    function highlightButton(laneIndex) {
+      const btn = document.querySelector(`.key-btn[data-lane="${laneIndex}"]`);
+      if (btn) {
+        btn.classList.add('active');
+        setTimeout(() => btn.classList.remove('active'), 150);
+      }
+    }
+
+    function triggerGameOver(reason = "Tile terlewat!") {
+      if (!isPlaying) return;
+      isPlaying = false;
+      cancelAnimationFrame(animationFrameId);
+
+      sound.playMissSound();
+
+      // Tampilkan Game Over overlay
+      document.getElementById('gameOverReason').textContent = reason;
+      finalScore.textContent = score;
+      finalHighScore.textContent = highScore;
+      gameOverOverlay.classList.remove('hidden');
+    }
+
+    function resetGame() {
+      score = 0;
+      speed = baseSpeed;
+      scoreDisplay.textContent = '0';
+      particles = [];
+      keyPressFx = [0, 0, 0, 0];
+      sound.melodyIndex = 0;
+
+      createInitialTiles();
+
+      gameOverOverlay.classList.add('hidden');
+      startOverlay.classList.add('hidden');
+
+      isPlaying = true;
+      lastTime = performance.now();
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- GAME LOOP & RENDER ---
+    function gameLoop(timestamp) {
+      if (!isPlaying) return;
+
+      const delta = (timestamp - lastTime) / (1000 / 60); // normalisasi ke ~60fps
+      lastTime = timestamp;
+
+      // 1. Bersihkan Kanvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 2. Gambar Jalur Rel Piano (Lanes & Divider Lines)
+      for (let i = 0; i < LANES_COUNT; i++) {
+        // Efek glow saat tuts ditekan
+        if (keyPressFx[i] > 0) {
+          ctx.fillStyle = `rgba(56, 189, 248, ${keyPressFx[i] * 0.22})`;
+          ctx.fillRect(i * LANE_WIDTH, 0, LANE_WIDTH, canvas.height);
+          keyPressFx[i] -= 0.06;
+          if (keyPressFx[i] < 0) keyPressFx[i] = 0;
+        }
+
+        // Garis pemisah antar jalur
+        if (i > 0) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(i * LANE_WIDTH, 0);
+          ctx.lineTo(i * LANE_WIDTH, canvas.height);
+          ctx.stroke();
+        }
+      }
+
+      // Garis Trigger/Target Line
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(0, HIT_LINE_Y);
+      ctx.lineTo(canvas.width, HIT_LINE_Y);
+      ctx.stroke();
+      ctx.setLineDash([]); // reset garis putus-putus
+
+      // 3. Update & Gambar Tiles
+      for (let i = tiles.length - 1; i >= 0; i--) {
+        const tile = tiles[i];
+        tile.y += speed * (delta || 1);
+        tile.draw();
+
+        // Cek jika tile belum ditekan dan menembus batas bawah kanvas
+        if (!tile.hit && tile.y > canvas.height) {
+          triggerGameOver("Tile terlewat!");
+          return;
+        }
+
+        // Hapus tile yang sudah lewat jauh di bawah layar
+        if (tile.y > canvas.height + 50) {
+          tiles.splice(i, 1);
+          spawnTile();
+        }
+      }
+
+      // 4. Update & Gambar Partikel
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update();
+        p.draw();
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- EVENT LISTENERS (KEYBOARD & MOUSE/TOUCH) ---
+
+    // Kontrol Keyboard (WASD & Tombol Panah / Arrow Keys)
+    window.addEventListener('keydown', (e) => {
+      // Jika Game Over atau Start layar terbuka, tombol Space/Enter bisa langsung memulai/merestart
+      if (!isPlaying) {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          resetGame();
+        }
+        return;
+      }
+
+      const lane = KEY_TO_LANE[e.code] !== undefined ? KEY_TO_LANE[e.code] : KEY_TO_LANE[e.key];
+      if (lane !== undefined) {
+        e.preventDefault();
+        handleLaneInput(lane);
+      }
+    });
+
+    // Kontrol Klik Tombol UI di Bawah Canvas
+    keyButtons.forEach(btn => {
+      const lane = parseInt(btn.getAttribute('data-lane'), 10);
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        handleLaneInput(lane);
+      });
+    });
+
+    // Kontrol Klik Langsung pada Jalur Canvas
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!isPlaying) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const clickX = (e.clientX - rect.left) * scaleX;
+      const lane = Math.floor(clickX / LANE_WIDTH);
+      if (lane >= 0 && lane < LANES_COUNT) {
+        handleLaneInput(lane);
+      }
+    });
+
+    // Tombol Mulai & Main Lagi
+    startBtn.addEventListener('click', () => {
+      sound.init();
+      resetGame();
+    });
+
+    restartBtn.addEventListener('click', () => {
+      sound.init();
+      resetGame();
+    });
+  </script>
+</body>
+</html>
